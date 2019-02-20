@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "nodemon index.js"
   },
   "author": "MaartenGDev <npm@maartendev.me>",
   "license": "MIT",
@@ -13,5 +13,8 @@
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
     "socket.io": "^2.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.10"
   }
 }
