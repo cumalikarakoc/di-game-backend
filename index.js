@@ -26,6 +26,8 @@ app.use(function(req, res, next) {
 
 app.get('/', (req, res) => res.send('Hello World!'))
 app.use('/auth', require('./routes/auth'))
+app.use('/game', require('./routes/game'))
+app.use('/challenges', require('./routes/challenges'))
 
 server.listen(port)
 module.exports = app
