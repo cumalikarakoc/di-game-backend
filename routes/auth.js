@@ -3,7 +3,9 @@ const router = express.Router()
 
 router.post('/login', (req, res) => {
   req.helpers.io.emit('player joined', {
-    user_id: req.body.user_id
+    avatarUrl: 'https://source.unsplash.com/random/400x400',
+    userId: req.body.user_id,
+    level: 0
   })
 
   res.send({hello: req.body.user_id});
