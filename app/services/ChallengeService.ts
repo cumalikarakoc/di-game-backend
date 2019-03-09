@@ -83,23 +83,30 @@ class ChallengeService {
                     const relatedEntity = Faker.ENTITIES.filter((possibleEntity) => possibleEntity.name === relation.targetEntityName)[0];
                     const inverseRelation = relatedEntity.relations.filter((invertedRelation) => invertedRelation.targetEntityName === entity.name)[0];
 
-                    usedRelationNames.push(relation.name)
+                    usedRelationNames.push(relation.name);
 
                     if (relation.cardinality === EntityRelationCardinality.MANY && inverseRelation.cardinality === EntityRelationCardinality.MANY) {
-                        return [...acc, new TableStructure(relation.name, [
-                            new TableColumn(entity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE),
-                            new TableColumn(relatedEntity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE),
-                        ])];
+                        const firstManyColumnReference = new ColumnReference(entity.name, SqlGeneratorService.IDENTITY_COLUMN, relation);
+                        const secondManyColumnReference = new ColumnReference(relatedEntity.name, SqlGeneratorService.IDENTITY_COLUMN, inverseRelation);
+
+                        return [
+                            ...acc,
+                            new TableStructure(relatedEntity.name, this.getPossibleColumnsForEntity(relatedEntity)),
+                            new TableStructure(relation.name, [
+                                new TableColumn(entity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, true, firstManyColumnReference),
+                                new TableColumn(relatedEntity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, true, secondManyColumnReference),
+                            ]),
+                        ];
                     }
 
-                    return [...acc, ...this.buildTableStructures([relatedEntity], tableStructures, usedRelationNames)];
+                    return [...this.buildTableStructures([relatedEntity], tableStructures, usedRelationNames), ...acc];
                 }, []);
 
             const entityHasBeenCreatedBefore = tableStructuresPerEntity.some((tableStructuresForEntity) => tableStructuresForEntity.some((structure) => structure.name === entity.name));
             const entityHasBeenCreatedInThisIteration = tableStructures.some((structure) => structure.name === entity.name);
             const tableStructureForCurrentEntity = entityHasBeenCreatedBefore || entityHasBeenCreatedInThisIteration ? [] : [new TableStructure(entity.name, possibleColumns)];
 
-            return [...tableStructuresPerEntity, [...tableStructureForCurrentEntity, ...tableStructures, ...tableStructuresForRelatedTables]];
+            return [...tableStructuresPerEntity, [...tableStructuresForRelatedTables, ...tableStructures, ...tableStructureForCurrentEntity]];
         }, []).reduce((acc, tableStructuresForEntity) => [...acc, ...tableStructuresForEntity], []);
     }
 
@@ -113,7 +120,7 @@ class ChallengeService {
                 const inverseRelation = relatedEntity.relations.filter((invertedRelation) => invertedRelation.targetEntityName === entity.name)[0];
 
                 return !(relation.cardinality === EntityRelationCardinality.MANY && inverseRelation.cardinality === EntityRelationCardinality.MANY) && relation.cardinality !== EntityRelationCardinality.MANY;
-            } ).map((relation) => {
+            }).map((relation) => {
                 const reference = new ColumnReference(relation.targetEntityName, SqlGeneratorService.IDENTITY_COLUMN, relation);
                 const columnName = `${relation.targetEntityName}_${SqlGeneratorService.IDENTITY_COLUMN}`;
 

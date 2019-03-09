@@ -7,7 +7,13 @@ class SqlGeneratorService {
     public static IDENTITY_TYPE = DataType.NUMBER;
 
     public generateTables(tableStructures: TableStructure[]): string {
-        return tableStructures.map((tableStructure) => {
+        const pivotTables = tableStructures.filter((structure) => structure.name.includes("_"));
+        const nonPivotTables = tableStructures.filter((structure) => !structure.name.includes("_"));
+
+        console.log(pivotTables)
+        console.log(nonPivotTables)
+
+        return [...nonPivotTables, ...pivotTables].map((tableStructure) => {
             return `CREATE TABLE ${tableStructure.name}(\n${tableStructure.columns
                 .map((column) => {
                     return `${column.name} ${this.getSqlDataType(column.dataType)}${this.buildConstraints(column)},\n`;
