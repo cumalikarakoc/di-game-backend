@@ -15,16 +15,23 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.use((req, res, next) => {
   if (!req.hasOwnProperty('helpers')) req.helpers = {}
   req.helpers.io = io
+
+  const token = req.headers['Authorization'] || ''.replace('Bearer ', '')
+
+  req.auth = {
+    token,
+    isAuthenticated: token !== ''
+  }
+
   next()
 })
 
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
+app.use(function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
+  next()
+})
 
-app.get('/', (req, res) => res.send('Hello World!'))
 app.use('/auth', require('./routes/auth'))
 app.use('/game', require('./routes/game'))
 app.use('/challenges', require('./routes/challenges'))

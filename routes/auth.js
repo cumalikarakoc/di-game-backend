@@ -2,11 +2,12 @@ const express = require('express')
 const router = express.Router()
 const fs = require('fs')
 const path = require('path')
+const uuid4 = require('uuid/v4');
 
 const authenticatedPlayers = []
 
 router.post('/login', (req, res) => {
-  const playerId = req.body.playerId
+  const {playerId}  = req.body
 
   if (authenticatedPlayers.find(player => player.id === playerId) !== undefined) {
     return res.send({
@@ -42,6 +43,7 @@ router.post('/login', (req, res) => {
   return res.send({
     success: true,
     players: authenticatedPlayers,
+    token: uuid4(),
     validation: {
       message: 'Welcome!',
       errors: []

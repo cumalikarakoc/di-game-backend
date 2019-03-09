@@ -1,7 +1,27 @@
 const express = require('express')
+const connection = require('./../database/connection')
 const router = express.Router()
 
+
 router.get('/next', (req, res) => {
+  if(!req.auth.isAuthenticated){
+    return res.json({success: false, error: 'Unauthorized'})
+  }
+
+
+  connection.connect(function(err) {
+    if (err) {
+      console.error('error connecting: ' + err.stack);
+      return;
+    }
+
+    connection.query(``)
+  });
+
+  connection.close();
+
+
+
   res.send({
     description: 'Select all users from database',
     tables: [
@@ -9,7 +29,7 @@ router.get('/next', (req, res) => {
         name: 'Users',
         columns: ['id', 'name', 'course','age'],
         rows: [
-          {id: 1, name: 'Example', course: 'DMDD',age: 18},
+          {id: 1, name: 'Example', course: 'DMDddD',age: 18},
           {id: 2, name: 'Maarten', course: 'OOAD',age: 19}
         ]
       },
@@ -23,6 +43,12 @@ router.get('/next', (req, res) => {
       }
     ]
   })
+})
+
+router.get('/verify', (req, res) => {
+  const {challengeId}  = req.body
+
+
 })
 
 module.exports = router
