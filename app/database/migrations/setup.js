@@ -27,5 +27,4 @@ const migrate = async () => {
 }
 
 migrate().then(res => {
-  console.log(res)
 })

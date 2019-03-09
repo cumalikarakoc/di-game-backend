@@ -11,8 +11,6 @@ router.get("/next", (req, res) => {
 
     const challenge = challengeService.generateRandomChallenge();
 
-    console.log(challenge);
-
     res.send({
         description: challenge.description,
         schema: challenge.initialSchema,

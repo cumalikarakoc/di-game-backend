@@ -10,4 +10,4 @@ class TableStructure {
     }
 }
 
-export default TableStructure
+export default TableStructure;
