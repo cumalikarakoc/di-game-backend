@@ -1,6 +1,6 @@
 class MathHelper {
-    public static random(low: number, high: number) {
-        return Math.floor(Math.random() * high) + low;
+    public static random(min: number, max: number) {
+        return Math.floor(min + Math.random() * (max + 1 - min));
     }
 }
 

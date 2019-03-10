@@ -11,10 +11,7 @@ router.get("/next", (req, res) => {
 
     const challenge = challengeService.generateRandomChallenge();
 
-    res.send({
-        description: challenge.description,
-        schema: challenge.initialSchema,
-    });
+    res.send(challenge);
 });
 
 router.get("/verify", (req, res) => {

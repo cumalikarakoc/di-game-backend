@@ -2,14 +2,20 @@ import Faker from "../helpers/Faker";
 import MathHelper from "../helpers/MathHelper";
 import Challenge from "../models/Challenge";
 import ColumnReference from "../models/ColumnReference";
+import DataType from "../models/DataType";
 import Entity from "../models/Entity";
 import EntityRelation from "../models/EntityRelation";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import ChallengeType from "../models/enums/ChallengeType";
+import Join from "../models/Query/Join";
+import JoinType from "../models/Query/JoinType";
+import RangeCheck from "../models/Query/RangeCheck";
 import Schema from "../models/Schema";
 import Table from "../models/Table";
 import TableColumn from "../models/TableColumn";
 import TableStructure from "../models/TableStructure";
+import TableSubset from "../models/TableSubset";
+import QueryBuilder from "./QueryBuilder";
 import SqlGeneratorService from "./SqlGeneratorService";
 
 class ChallengeService {
@@ -23,54 +29,145 @@ class ChallengeService {
         const amountOfTablesForJoin = 2;
         const entities = [...Faker.ENTITIES.slice(0, amountOfTablesForJoin)];
 
-        const initialSetupSql = this.sqlGenerator.generateTables(this.buildTableStructures(entities));
-        const solutionSql = `SELECT *
-                             from hier`;
+        const tableStructures = this.buildTableStructures(entities);
+        const initialSetupSql = this.sqlGenerator.generateTables(tableStructures);
 
-        return new Challenge("hello world", initialSetupSql, solutionSql, new Schema([
+        const solutionQueryBuilder = new QueryBuilder();
+        let challengeDescription = "";
+        const baseTable = tableStructures.filter((x) => x.name === "person")[0];
+
+        const columnsWithRelation = baseTable.columns.filter((column) => column.referencesColumn !== undefined);
+        columnsWithRelation.sort((_) => 0.5 - Math.random());
+
+        let amountOfRelationsLeftToBeCreated = MathHelper.random(1, columnsWithRelation.length - 1);
+        let amountOfConditionsLeftToBeCreated = MathHelper.random(1, 3);
+
+        const relatedTables = tableStructures.filter((possibleStructure) => possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === baseTable.name));
+
+        const tableSubset = this.getRandomColumnsSubsetOfTable(baseTable.columns);
+
+        solutionQueryBuilder.setFrom(baseTable.name)
+            .addSelects(tableSubset.columns.map((columnToSelect) => `${baseTable.name}.${columnToSelect.name}`));
+
+        challengeDescription += `Select ${tableSubset.description} from ${baseTable.name}`;
+
+        columnsWithRelation.forEach((column) => {
+            if (amountOfRelationsLeftToBeCreated <= 0) {
+                return;
+            }
+            const relatedTable = tableStructures.filter((possibleTable) => column.referencesColumn !== undefined && possibleTable.name === column.referencesColumn.tableName)[0];
+
+            const relatedTableSubset = this.getRandomColumnsSubsetOfTable(relatedTable.columns);
+
+            challengeDescription += ` with ${relatedTableSubset.description} of their related ${relatedTable.name + (column.referencesColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
+
+            solutionQueryBuilder
+                .addSelects(relatedTableSubset.columns.map((columnToSelect) => `${baseTable.name}.${columnToSelect.name}`))
+                .addJoin(new Join(JoinType.INNER, relatedTable.name, `${baseTable.name}.${column.name}=${column.referencesColumn.tableName}.${column.referencesColumn.columnName}`));
+
+            amountOfRelationsLeftToBeCreated--;
+        });
+
+        relatedTables.forEach((relatedTable) => {
+            if (amountOfConditionsLeftToBeCreated <= 0) {
+                return;
+            }
+
+            const challengeType = this.getRandomChallengeType();
+            const columnThatReferencesBaseTable = relatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === baseTable.name)[0];
+
+            const includeWhereCondition = true;
+            let whereConditionSql = "";
+            let whereDescription = "";
+
+            if (includeWhereCondition) {
+                const shouldUseRelationOfRelatedTable = true;
+                const relatedTablesForRelatedTable = tableStructures.filter((possibleStructure) => possibleStructure.name !== baseTable.name && !possibleStructure.isPivotTable && possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name));
+                relatedTablesForRelatedTable.sort((_) => 0.5 - Math.random());
+
+                const relatedTableForRelatedTable = relatedTablesForRelatedTable[0];
+                const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
+
+                if (shouldUseRelationOfRelatedTable) {
+                    const rangeCheck = this.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable);
+                    whereConditionSql = rangeCheck.sql;
+                    whereDescription = `${rangeCheck.description}`;
+                } else {
+                    const possibleColumnsForWhereCondition = relatedTable.columns.filter((column) => !column.isPrimaryKey && column.referencesColumn === undefined);
+                    const columnsForWhereCondition = possibleColumnsForWhereCondition.slice(0, MathHelper.random(1, possibleColumnsForWhereCondition.length - 1));
+
+                    const valuesForColumnByColumnName = columnsForWhereCondition.reduce((acc: any, column) => {
+                        acc[column.name] = this.getRandomDataForDataType(column.dataType);
+                        return acc;
+                    }, {});
+
+                    // TODO: FIX SEED REQUIREMENT
+                    whereConditionSql = `${columnsForWhereCondition.map((column) => {
+                        return `${column.name}=${valuesForColumnByColumnName[column.name]}`;
+                    }).join(" AND ")}`;
+
+                    whereDescription = `where ${columnsForWhereCondition.map((column) => {
+                        return `the ${column.name} is ${valuesForColumnByColumnName[column.name]}`;
+                    }).join(" and ")}`;
+                }
+
+                amountOfConditionsLeftToBeCreated--;
+            }
+
+            if (challengeType === ChallengeType.RELATED_COUNT) {
+                solutionQueryBuilder.addSelect(`(select count(*) FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN} AND ${whereConditionSql}) as ${relatedTable.name}_count`);
+                challengeDescription += `with the amount of ${relatedTable.name}s${includeWhereCondition ? " where " + whereDescription : ""} they own`;
+                amountOfConditionsLeftToBeCreated--;
+            } else if (challengeType === ChallengeType.MINIMUM_RELATED) {
+                const rangeCheck = this.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, whereConditionSql, whereDescription);
+                solutionQueryBuilder.addWhere(rangeCheck.sql);
+                challengeDescription += ` ${rangeCheck.description}`;
+                amountOfConditionsLeftToBeCreated--;
+            }
+        });
+
+        return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), new Schema([
             new Table(
                 "",
                 [],
                 [],
             ),
         ]));
-        //
-        // const challengeType = this.getRandomChallengeType();
+    }
 
-        //
-        // const tablesUsed = 0;
-        //
-        // const tablesToGenerate = entities.map((entity, tableIndex) => {
-        //     const possibleColumns = this.getPossibleColumnsForEntity(entity);
-        //
-        //     const columnsToSelect = possibleColumns.slice(0, MathHelper.random(1, possibleColumns.length));
-        //
-        //     const columnSelection = columnsToSelect.length === possibleColumns.length
-        //         ? "all"
-        //         : columnsToSelect.map((column) => column.name).join(", ");
-        //
-        //     const challengeDescription = `Get ${columnSelection} from table ${entity.name}`;
-        //
-        //     columnsToSelect.filter((column) => column.referencesColumn !== undefined).map((column) => {
-        //         const relatedEntity = Faker.ENTITIES.filter((possibleEntity) => possibleEntity.name === column.referencesColumn.tableName)[0];
-        //         const columnsForRelatedEntity = this.getPossibleColumnsForEntity(relatedEntity);
-        //
-        //     });
-        //
-        //     return new TableStructure(entity.name, possibleColumns);
-        // });
-        //
-        // const initialSetupSql = this.sqlGenerator.generateTables([]);
-        //
-        // const solutionSql = `SELECT ${columnsToSelect.map((column) => column.name).join(",")} FROM ${tableName}`;
-        //
-        // return new Challenge(challengeDescription, initialSetupSql, solutionSql, new Schema([
-        //     new Table(
-        //         tableName,
-        //         columnsToSelect.map((column) => column.name),
-        //         [],
-        //     ),
-        // ]));
+    private getRandomDataForDataType(dataType: DataType) {
+        if (dataType === DataType.TEXT) {
+            return "aaa";
+        }
+
+        if (dataType === DataType.NUMBER) {
+            return MathHelper.random(1, 40);
+        }
+
+        return Faker.randomBoolean();
+    }
+
+    private generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {
+        const evenOrMoreIsRequired = Faker.randomBoolean();
+        const range = MathHelper.random(2, 6);
+        const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
+
+        const sqlCheck = `EXISTS (select 1 FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN}${additionalWhereSql !== "" ? ` AND ${additionalWhereSql}` : ""} HAVING COUNT(*) ${rangeCheck})`;
+        const checkDescription = `${columnThatReferencesBaseTable.referencesColumn.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
+
+        return new RangeCheck(sqlCheck, checkDescription);
+    }
+
+    private getRandomColumnsSubsetOfTable(allColumns: TableColumn[]): TableSubset {
+        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined);
+        const columnsToSelectFromRelatedTable = possibleColumns
+            .slice(0, MathHelper.random(1, possibleColumns.length - 1));
+
+        const columnSelectionAsText = columnsToSelectFromRelatedTable.length === possibleColumns.length
+            ? "all"
+            : columnsToSelectFromRelatedTable.map((relatedColumn) => relatedColumn.name).join(", ");
+
+        return new TableSubset(columnsToSelectFromRelatedTable, columnSelectionAsText);
     }
 
     private buildTableStructures(entities: Entity[], tableStructures: TableStructure[] = [], usedRelationNames: string[] = []): TableStructure[] {
@@ -93,9 +190,9 @@ class ChallengeService {
                             ...acc,
                             new TableStructure(relatedEntity.name, this.getPossibleColumnsForEntity(relatedEntity)),
                             new TableStructure(relation.name, [
-                                new TableColumn(entity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, true, firstManyColumnReference),
-                                new TableColumn(relatedEntity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, true, secondManyColumnReference),
-                            ]),
+                                new TableColumn(entity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, false, firstManyColumnReference),
+                                new TableColumn(relatedEntity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, false, secondManyColumnReference),
+                            ], true),
                         ];
                     }
 
@@ -132,11 +229,11 @@ class ChallengeService {
     private getRandomChallengeType() {
         const randomNumber = MathHelper.random(1, 10);
 
-        if (randomNumber > 11) {
-            return ChallengeType.COMBINE;
+        if (randomNumber < 11) {
+            return ChallengeType.MINIMUM_RELATED;
         }
 
-        return ChallengeType.SINGLE;
+        return ChallengeType.RELATED_COUNT;
     }
 }
 

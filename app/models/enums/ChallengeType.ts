@@ -1,6 +1,6 @@
 enum ChallengeType {
-    SINGLE,
-    COMBINE,
+    RELATED_COUNT,
+    MINIMUM_RELATED,
 }
 
 export default ChallengeType;
