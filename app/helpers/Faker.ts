@@ -24,7 +24,7 @@ class Faker {
             relations: [
                 {
                     cardinality: EntityRelationCardinality.ONE,
-                    label: "who owns",
+                    label: "the person owns",
                     name: "car_person",
                     targetEntityName: "person",
                 },
@@ -150,6 +150,12 @@ class Faker {
                     name: "school_person",
                     targetEntityName: "school",
                 },
+                {
+                    cardinality: EntityRelationCardinality.MANY,
+                    label: "owns",
+                    name: "book_person",
+                    targetEntityName: "book",
+                },
             ],
         },
         {
@@ -166,6 +172,31 @@ class Faker {
                     label: "that have",
                     name: "car_door",
                     targetEntityName: "car",
+                },
+            ],
+        },
+        {
+            attributes: [
+                {
+                    name: "title",
+                    type: DataType.TEXT,
+                },
+                {
+                    name: "is_best_seller",
+                    type: DataType.BOOLEAN,
+                },
+                {
+                    name: "publish_date",
+                    type: DataType.DATE,
+                },
+            ],
+            name: "book",
+            relations: [
+                {
+                    cardinality: EntityRelationCardinality.ONE,
+                    label: "that have",
+                    name: "book_person",
+                    targetEntityName: "person",
                 },
             ],
         },

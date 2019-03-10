@@ -40,7 +40,7 @@ test("should generate DDL for 2 tables with relation", () => {
             new TableColumn("b", DataType.TEXT),
         ]),
         new TableStructure("b", [
-            new TableColumn("a", DataType.TEXT, true, new ColumnReference("a", "a", new EntityRelation("a", "b", EntityRelationCardinality.MANY))),
+            new TableColumn("a", DataType.TEXT, true, new ColumnReference("a", "a", new EntityRelation("a", "b", EntityRelationCardinality.MANY, "a_b"))),
             new TableColumn("b", DataType.TEXT),
         ]),
     ];

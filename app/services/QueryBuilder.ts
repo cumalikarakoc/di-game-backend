@@ -33,10 +33,11 @@ class QueryBuilder {
     }
 
     public build() {
+        const wherePart = this.wheres.length > 0 ? `WHERE ${this.wheres.join(" AND ")}` : "";
         return `SELECT ${this.selects.join(",")} FROM ${this.from} ${this.joins.map((join) => {
             const joinType = join.type === JoinType.INNER ? "INNER JOIN " : "LEFT JOIN";
             return `${joinType} ${join.table} ON ${join.condition}`;
-        }).join(" ")} WHERE ${this.wheres.join(" AND")}`;
+        }).join(" ")} ${wherePart}`;
     }
 }
 

@@ -30,11 +30,13 @@ class ChallengeService {
         const entities = [...Faker.ENTITIES.slice(0, amountOfTablesForJoin)];
 
         const tableStructures = this.buildTableStructures(entities);
+        tableStructures.sort((_) => 0.5 - Math.random());
+
         const initialSetupSql = this.sqlGenerator.generateTables(tableStructures);
 
         const solutionQueryBuilder = new QueryBuilder();
         let challengeDescription = "";
-        const baseTable = tableStructures.filter((x) => x.name === "person")[0];
+        const baseTable = tableStructures[0];
 
         const columnsWithRelation = baseTable.columns.filter((column) => column.referencesColumn !== undefined);
         columnsWithRelation.sort((_) => 0.5 - Math.random());
@@ -56,14 +58,14 @@ class ChallengeService {
                 return;
             }
             const relatedTable = tableStructures.filter((possibleTable) => column.referencesColumn !== undefined && possibleTable.name === column.referencesColumn.tableName)[0];
-
             const relatedTableSubset = this.getRandomColumnsSubsetOfTable(relatedTable.columns);
+            const referenceColumn = column.referencesColumn!;
 
-            challengeDescription += ` with ${relatedTableSubset.description} of their related ${relatedTable.name + (column.referencesColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
+            challengeDescription += ` with the ${relatedTableSubset.description} of their related ${relatedTable.name + (referenceColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
 
             solutionQueryBuilder
-                .addSelects(relatedTableSubset.columns.map((columnToSelect) => `${baseTable.name}.${columnToSelect.name}`))
-                .addJoin(new Join(JoinType.INNER, relatedTable.name, `${baseTable.name}.${column.name}=${column.referencesColumn.tableName}.${column.referencesColumn.columnName}`));
+                .addSelects(relatedTableSubset.columns.map((columnToSelect) => `${relatedTable.name}.${columnToSelect.name}`))
+                .addJoin(new Join(JoinType.INNER, relatedTable.name, `${baseTable.name}.${column.name}=${referenceColumn.tableName}.${referenceColumn.columnName}`));
 
             amountOfRelationsLeftToBeCreated--;
         });
@@ -75,20 +77,19 @@ class ChallengeService {
 
             const challengeType = this.getRandomChallengeType();
             const columnThatReferencesBaseTable = relatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === baseTable.name)[0];
-
-            const includeWhereCondition = true;
+            const includeWhereCondition = Faker.randomBoolean();
             let whereConditionSql = "";
             let whereDescription = "";
 
             if (includeWhereCondition) {
-                const shouldUseRelationOfRelatedTable = true;
+                const shouldUseRelationOfRelatedTable = Faker.randomBoolean();
                 const relatedTablesForRelatedTable = tableStructures.filter((possibleStructure) => possibleStructure.name !== baseTable.name && !possibleStructure.isPivotTable && possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name));
                 relatedTablesForRelatedTable.sort((_) => 0.5 - Math.random());
 
-                const relatedTableForRelatedTable = relatedTablesForRelatedTable[0];
-                const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
+                if (shouldUseRelationOfRelatedTable && relatedTablesForRelatedTable.length > 0) {
+                    const relatedTableForRelatedTable = relatedTablesForRelatedTable[0];
+                    const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
 
-                if (shouldUseRelationOfRelatedTable) {
                     const rangeCheck = this.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable);
                     whereConditionSql = rangeCheck.sql;
                     whereDescription = `${rangeCheck.description}`;
@@ -153,13 +154,13 @@ class ChallengeService {
         const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
 
         const sqlCheck = `EXISTS (select 1 FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN}${additionalWhereSql !== "" ? ` AND ${additionalWhereSql}` : ""} HAVING COUNT(*) ${rangeCheck})`;
-        const checkDescription = `${columnThatReferencesBaseTable.referencesColumn.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
+        const checkDescription = `${columnThatReferencesBaseTable.referencesColumn!.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
 
         return new RangeCheck(sqlCheck, checkDescription);
     }
 
     private getRandomColumnsSubsetOfTable(allColumns: TableColumn[]): TableSubset {
-        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined);
+        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined && !tableColumn.isPrimaryKey);
         const columnsToSelectFromRelatedTable = possibleColumns
             .slice(0, MathHelper.random(1, possibleColumns.length - 1));
 
@@ -203,7 +204,7 @@ class ChallengeService {
             const entityHasBeenCreatedInThisIteration = tableStructures.some((structure) => structure.name === entity.name);
             const tableStructureForCurrentEntity = entityHasBeenCreatedBefore || entityHasBeenCreatedInThisIteration ? [] : [new TableStructure(entity.name, possibleColumns)];
 
-            return [...tableStructuresPerEntity, [...tableStructuresForRelatedTables, ...tableStructures, ...tableStructureForCurrentEntity]];
+            return [...tableStructuresPerEntity, [...tableStructures, ...tableStructureForCurrentEntity, ...tableStructuresForRelatedTables]];
         }, []).reduce((acc, tableStructuresForEntity) => [...acc, ...tableStructuresForEntity], []);
     }
 

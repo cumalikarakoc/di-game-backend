@@ -7,15 +7,32 @@ class SqlGeneratorService {
     public static IDENTITY_TYPE = DataType.NUMBER;
 
     public generateTables(tableStructures: TableStructure[]): string {
-        const pivotTables = tableStructures.filter((structure) => structure.name.includes("_"));
-        const nonPivotTables = tableStructures.filter((structure) => !structure.name.includes("_"));
-
-        return [...nonPivotTables, ...pivotTables].map((tableStructure) => {
-            return `CREATE TABLE ${tableStructure.name}(\n${tableStructure.columns
+        return this.sortToSatisfyDependencies(tableStructures, tableStructures).map((tableStructure) => {
+            return `CREATE TABLE ${tableStructure.name}(${tableStructure.columns
                 .map((column) => {
-                    return `${column.name} ${this.getSqlDataType(column.dataType)}${this.buildConstraints(column)},\n`;
-            }).join("")});`;
+                    return `${column.name} ${this.getSqlDataType(column.dataType)}${this.buildConstraints(column)},`;
+                }).join("")});`;
         }).join("\n");
+    }
+
+    private sortToSatisfyDependencies(allTableStructures: TableStructure[], tableStructures: TableStructure[], usedTableStructures: TableStructure[] = []) {
+        tableStructures.forEach((table) => {
+            const relatedTables = table.columns
+                .filter((column) => column.referencesColumn !== undefined && usedTableStructures.every((x) => x.name !== column.referencesColumn!.tableName))
+                .map((column) => {
+                    return allTableStructures.filter((possibleTable) => column.referencesColumn !== undefined && column.referencesColumn.tableName === possibleTable.name)[0];
+                });
+
+            if (relatedTables.length > 0) {
+                this.sortToSatisfyDependencies(allTableStructures, relatedTables, usedTableStructures);
+            }
+
+            if (usedTableStructures.every((x) => x.name !== table.name)) {
+                usedTableStructures.push(table);
+            }
+        });
+
+        return usedTableStructures;
     }
 
     private getSqlDataType(dataType: DataType): string {
