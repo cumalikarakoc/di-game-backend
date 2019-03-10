@@ -10,19 +10,20 @@ import ChallengeType from "../models/enums/ChallengeType";
 import Join from "../models/Query/Join";
 import JoinType from "../models/Query/JoinType";
 import RangeCheck from "../models/Query/RangeCheck";
-import Schema from "../models/Schema";
-import Table from "../models/Table";
 import TableColumn from "../models/TableColumn";
 import TableStructure from "../models/TableStructure";
 import TableSubset from "../models/TableSubset";
 import QueryBuilder from "./QueryBuilder";
+import SchemaSeeder from "./SchemaSeeder";
 import SqlGeneratorService from "./SqlGeneratorService";
 
 class ChallengeService {
     private sqlGenerator: SqlGeneratorService;
+    private schemaSeeder: SchemaSeeder;
 
-    constructor(sqlGenerator: SqlGeneratorService) {
+    constructor(sqlGenerator: SqlGeneratorService, schemaSeeder: SchemaSeeder) {
         this.sqlGenerator = sqlGenerator;
+        this.schemaSeeder = schemaSeeder;
     }
 
     public generateRandomChallenge(): Challenge {
@@ -98,7 +99,7 @@ class ChallengeService {
                     const columnsForWhereCondition = possibleColumnsForWhereCondition.slice(0, MathHelper.random(1, possibleColumnsForWhereCondition.length - 1));
 
                     const valuesForColumnByColumnName = columnsForWhereCondition.reduce((acc: any, column) => {
-                        acc[column.name] = this.getRandomDataForDataType(column.dataType);
+                        acc[column.name] = SchemaSeeder.getRandomDataForDataType(column.dataType);
                         return acc;
                     }, {});
 
@@ -127,25 +128,7 @@ class ChallengeService {
             }
         });
 
-        return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), new Schema([
-            new Table(
-                "",
-                [],
-                [],
-            ),
-        ]));
-    }
-
-    private getRandomDataForDataType(dataType: DataType) {
-        if (dataType === DataType.TEXT) {
-            return "aaa";
-        }
-
-        if (dataType === DataType.NUMBER) {
-            return MathHelper.random(1, 40);
-        }
-
-        return Faker.randomBoolean();
+        return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures)));
     }
 
     private generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {

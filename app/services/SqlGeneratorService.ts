@@ -15,7 +15,7 @@ class SqlGeneratorService {
         }).join("\n");
     }
 
-    private sortToSatisfyDependencies(allTableStructures: TableStructure[], tableStructures: TableStructure[], usedTableStructures: TableStructure[] = []) {
+    public sortToSatisfyDependencies(allTableStructures: TableStructure[], tableStructures: TableStructure[], usedTableStructures: TableStructure[] = []) {
         tableStructures.forEach((table) => {
             const relatedTables = table.columns
                 .filter((column) => column.referencesColumn !== undefined && usedTableStructures.every((x) => x.name !== column.referencesColumn!.tableName))
