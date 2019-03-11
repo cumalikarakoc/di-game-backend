@@ -1,9 +1,10 @@
 import * as express from "express";
 const router = express.Router();
 import ChallengeService from "../services/ChallengeService";
+import SchemaAnalyzer from "../services/SchemaAnalyzer";
 import SchemaSeeder from "../services/SchemaSeeder";
 import SqlGeneratorService from "../services/SqlGeneratorService";
-const challengeService = new ChallengeService(new SqlGeneratorService(), new SchemaSeeder());
+const challengeService = new ChallengeService(new SqlGeneratorService(), new SchemaSeeder(), new SchemaAnalyzer());
 
 router.get("/next", (req, res) => {
     // if (!req.auth.isAuthenticated) {

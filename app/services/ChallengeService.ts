@@ -1,53 +1,46 @@
+import ArrayHelper from "../helpers/ArrayHelper";
 import Faker from "../helpers/Faker";
-import SentenceHelper from "../helpers/SentenceHelper";
 import MathHelper from "../helpers/MathHelper";
 import Challenge from "../models/Challenge";
-import ColumnReference from "../models/ColumnReference";
-import Entity from "../models/Entity";
-import EntityRelation from "../models/EntityRelation";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import ChallengeType from "../models/enums/ChallengeType";
 import Join from "../models/Query/Join";
 import JoinType from "../models/Query/JoinType";
-import RangeCheck from "../models/Query/RangeCheck";
-import TableColumn from "../models/TableColumn";
-import TableStructure from "../models/TableStructure";
-import TableSubset from "../models/TableSubset";
 import QueryBuilder from "./QueryBuilder";
+import SchemaAnalyzer from "./SchemaAnalyzer";
 import SchemaSeeder from "./SchemaSeeder";
 import SqlGeneratorService from "./SqlGeneratorService";
 
 class ChallengeService {
     private sqlGenerator: SqlGeneratorService;
     private schemaSeeder: SchemaSeeder;
+    private schemaAnalyzer: SchemaAnalyzer;
 
-    constructor(sqlGenerator: SqlGeneratorService, schemaSeeder: SchemaSeeder) {
+    constructor(sqlGenerator: SqlGeneratorService, schemaSeeder: SchemaSeeder, schemaAnalyzer: SchemaAnalyzer) {
         this.sqlGenerator = sqlGenerator;
         this.schemaSeeder = schemaSeeder;
+        this.schemaAnalyzer = schemaAnalyzer;
     }
 
     public generateRandomChallenge(): Challenge {
         const amountOfTablesForJoin = 2;
         const entities = [...Faker.ENTITIES.slice(0, amountOfTablesForJoin)];
 
-        const tableStructures = this.buildTableStructures(entities);
-        tableStructures.sort((_) => 0.5 - Math.random());
-
+        const tableStructures = ArrayHelper.shuffle(this.schemaAnalyzer.buildTableStructures(entities));
         const initialSetupSql = this.sqlGenerator.generateTables(tableStructures);
 
         const solutionQueryBuilder = new QueryBuilder();
         let challengeDescription = "";
         const baseTable = tableStructures[0];
 
-        const columnsWithRelation = baseTable.columns.filter((column) => column.referencesColumn !== undefined);
-        columnsWithRelation.sort((_) => 0.5 - Math.random());
+        const columnsWithRelation = ArrayHelper.shuffle(baseTable.columns.filter((column) => column.referencesColumn !== undefined));
 
         let amountOfRelationsLeftToBeCreated = MathHelper.random(1, columnsWithRelation.length - 1);
         let amountOfConditionsLeftToBeCreated = MathHelper.random(1, 3);
 
         const relatedTables = tableStructures.filter((possibleStructure) => possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === baseTable.name));
 
-        const tableSubset = this.getRandomColumnsSubsetOfTable(baseTable.columns);
+        const tableSubset = this.schemaAnalyzer.getRandomColumnsSubsetOfTable(baseTable.columns);
 
         solutionQueryBuilder.setFrom(baseTable.name)
             .addSelects(tableSubset.columns.map((columnToSelect) => `${baseTable.name}.${columnToSelect.name}`));
@@ -59,7 +52,7 @@ class ChallengeService {
                 return;
             }
             const relatedTable = tableStructures.filter((possibleTable) => column.referencesColumn !== undefined && possibleTable.name === column.referencesColumn.tableName)[0];
-            const relatedTableSubset = this.getRandomColumnsSubsetOfTable(relatedTable.columns);
+            const relatedTableSubset = this.schemaAnalyzer.getRandomColumnsSubsetOfTable(relatedTable.columns);
             const referenceColumn = column.referencesColumn!;
 
             challengeDescription += ` with ${relatedTableSubset.description} of their related ${relatedTable.name + (referenceColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
@@ -86,14 +79,13 @@ class ChallengeService {
 
             if (includeWhereCondition) {
                 const shouldUseRelationOfRelatedTable = Faker.randomBoolean();
-                const relatedTablesForRelatedTable = tableStructures.filter((possibleStructure) => possibleStructure.name !== baseTable.name && !possibleStructure.isPivotTable && possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name));
-                relatedTablesForRelatedTable.sort((_) => 0.5 - Math.random());
+                const relatedTablesForRelatedTable = ArrayHelper.shuffle(tableStructures.filter((possibleStructure) => possibleStructure.name !== baseTable.name && !possibleStructure.isPivotTable && possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)));
 
                 if (shouldUseRelationOfRelatedTable && relatedTablesForRelatedTable.length > 0) {
                     const relatedTableForRelatedTable = relatedTablesForRelatedTable[0];
                     const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
 
-                    const rangeCheck = this.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable, false);
+                    const rangeCheck = this.schemaAnalyzer.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable, false);
                     whereConditionSql = rangeCheck.sql;
                     whereDescription = `${rangeCheck.description}`;
                 } else {
@@ -123,7 +115,7 @@ class ChallengeService {
                 challengeDescription += `with the amount of ${relatedTable.name}s${includeWhereCondition ? " where " + whereDescription : ""} they own`;
                 amountOfConditionsLeftToBeCreated--;
             } else if (challengeType === ChallengeType.MINIMUM_RELATED) {
-                const rangeCheck = this.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, amountOfNonNestedRangeChecksCreated === 0, whereConditionSql, whereDescription);
+                const rangeCheck = this.schemaAnalyzer.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, amountOfNonNestedRangeChecksCreated === 0, whereConditionSql, whereDescription);
                 amountOfNonNestedRangeChecksCreated++;
                 solutionQueryBuilder.addWhere(rangeCheck.sql);
                 challengeDescription += ` ${rangeCheck.description}`;
@@ -134,86 +126,6 @@ class ChallengeService {
         challengeDescription += ".";
 
         return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures)));
-    }
-
-    private generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {
-        const evenOrMoreIsRequired = Faker.randomBoolean();
-        const range = MathHelper.random(2, 6);
-        const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
-
-        const whereJoinText = isFirstCheck ? "where" : "and";
-        const sqlCheck = `EXISTS (select 1 FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN}${additionalWhereSql !== "" ? ` AND ${additionalWhereSql}` : ""} HAVING COUNT(*) ${rangeCheck})`;
-        const checkDescription = `${whereJoinText} the ${baseTable.name} ${columnThatReferencesBaseTable.referencesColumn!.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
-
-        return new RangeCheck(sqlCheck, checkDescription);
-    }
-
-    private getRandomColumnsSubsetOfTable(allColumns: TableColumn[]): TableSubset {
-        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined);
-        const columnsToSelectFromRelatedTable = possibleColumns
-            .slice(0, MathHelper.random(2, possibleColumns.length - 1));
-
-        const columnSelectionAsText = columnsToSelectFromRelatedTable.length === possibleColumns.length
-            ? "all fields"
-            : "the " + SentenceHelper.toList(columnsToSelectFromRelatedTable.map((relatedColumn) => relatedColumn.name));
-
-        return new TableSubset(columnsToSelectFromRelatedTable, columnSelectionAsText);
-    }
-
-    private buildTableStructures(entities: Entity[], tableStructures: TableStructure[] = [], usedRelationNames: string[] = []): TableStructure[] {
-        return entities.reduce((tableStructuresPerEntity: TableStructure[][], entity: Entity) => {
-            const possibleColumns = this.getPossibleColumnsForEntity(entity);
-
-            const tableStructuresForRelatedTables: TableStructure[] = entity.relations
-                .filter((relation) => usedRelationNames.indexOf(relation.name) === -1)
-                .reduce((acc: TableStructure[], relation: EntityRelation) => {
-                    const relatedEntity = Faker.ENTITIES.filter((possibleEntity) => possibleEntity.name === relation.targetEntityName)[0];
-                    const inverseRelation = relatedEntity.relations.filter((invertedRelation) => invertedRelation.targetEntityName === entity.name)[0];
-
-                    usedRelationNames.push(relation.name);
-
-                    if (relation.cardinality === EntityRelationCardinality.MANY && inverseRelation.cardinality === EntityRelationCardinality.MANY) {
-                        const firstManyColumnReference = new ColumnReference(entity.name, SqlGeneratorService.IDENTITY_COLUMN, relation);
-                        const secondManyColumnReference = new ColumnReference(relatedEntity.name, SqlGeneratorService.IDENTITY_COLUMN, inverseRelation);
-
-                        return [
-                            ...acc,
-                            new TableStructure(relatedEntity.name, this.getPossibleColumnsForEntity(relatedEntity)),
-                            new TableStructure(relation.name, [
-                                new TableColumn(entity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, false, firstManyColumnReference),
-                                new TableColumn(relatedEntity.name + "_" + SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, false, secondManyColumnReference),
-                            ], true),
-                        ];
-                    }
-
-                    return [...this.buildTableStructures([relatedEntity], tableStructures, usedRelationNames), ...acc];
-                }, []);
-
-            const entityHasBeenCreatedBefore = tableStructuresPerEntity.some((tableStructuresForEntity) => tableStructuresForEntity.some((structure) => structure.name === entity.name));
-            const entityHasBeenCreatedInThisIteration = tableStructures.some((structure) => structure.name === entity.name);
-            const tableStructureForCurrentEntity = entityHasBeenCreatedBefore || entityHasBeenCreatedInThisIteration ? [] : [new TableStructure(entity.name, possibleColumns)];
-
-            return [...tableStructuresPerEntity, [...tableStructures, ...tableStructureForCurrentEntity, ...tableStructuresForRelatedTables]];
-        }, []).reduce((acc, tableStructuresForEntity) => [...acc, ...tableStructuresForEntity], []);
-    }
-
-    private getPossibleColumnsForEntity(entity: Entity) {
-        return [
-            new TableColumn(SqlGeneratorService.IDENTITY_COLUMN, SqlGeneratorService.IDENTITY_TYPE, true),
-            ...entity.attributes.slice(0, MathHelper.random(1, 5))
-                .map((attribute) => new TableColumn(attribute.name, attribute.type), false),
-            ...entity.relations.filter((relation) => {
-                const relatedEntity = Faker.ENTITIES.filter((possibleEntity) => possibleEntity.name === relation.targetEntityName)[0];
-                const inverseRelation = relatedEntity.relations.filter((invertedRelation) => invertedRelation.targetEntityName === entity.name)[0];
-
-                return !(relation.cardinality === EntityRelationCardinality.MANY && inverseRelation.cardinality === EntityRelationCardinality.MANY) && relation.cardinality !== EntityRelationCardinality.MANY;
-            }).map((relation) => {
-                const reference = new ColumnReference(relation.targetEntityName, SqlGeneratorService.IDENTITY_COLUMN, relation);
-                const columnName = `${relation.targetEntityName}_${SqlGeneratorService.IDENTITY_COLUMN}`;
-
-                return new TableColumn(columnName, SqlGeneratorService.IDENTITY_TYPE, false, reference);
-            }),
-        ];
     }
 
     private getRandomChallengeType() {
