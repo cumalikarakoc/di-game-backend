@@ -1,8 +1,8 @@
 import Faker from "../helpers/Faker";
+import SentenceHelper from "../helpers/SentenceHelper";
 import MathHelper from "../helpers/MathHelper";
 import Challenge from "../models/Challenge";
 import ColumnReference from "../models/ColumnReference";
-import DataType from "../models/DataType";
 import Entity from "../models/Entity";
 import EntityRelation from "../models/EntityRelation";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
@@ -52,7 +52,7 @@ class ChallengeService {
         solutionQueryBuilder.setFrom(baseTable.name)
             .addSelects(tableSubset.columns.map((columnToSelect) => `${baseTable.name}.${columnToSelect.name}`));
 
-        challengeDescription += `Select ${tableSubset.description} from ${baseTable.name}`;
+        challengeDescription += `select ${tableSubset.description} from each ${baseTable.name}`;
 
         columnsWithRelation.forEach((column) => {
             if (amountOfRelationsLeftToBeCreated <= 0) {
@@ -62,7 +62,7 @@ class ChallengeService {
             const relatedTableSubset = this.getRandomColumnsSubsetOfTable(relatedTable.columns);
             const referenceColumn = column.referencesColumn!;
 
-            challengeDescription += ` with the ${relatedTableSubset.description} of their related ${relatedTable.name + (referenceColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
+            challengeDescription += ` with ${relatedTableSubset.description} of their related ${relatedTable.name + (referenceColumn.sourceRelation.cardinality === EntityRelationCardinality.ONE ? "" : "s")}`;
 
             solutionQueryBuilder
                 .addSelects(relatedTableSubset.columns.map((columnToSelect) => `${relatedTable.name}.${columnToSelect.name}`))
@@ -70,6 +70,8 @@ class ChallengeService {
 
             amountOfRelationsLeftToBeCreated--;
         });
+
+        let amountOfNonNestedRangeChecksCreated = 0;
 
         relatedTables.forEach((relatedTable) => {
             if (amountOfConditionsLeftToBeCreated <= 0) {
@@ -91,7 +93,7 @@ class ChallengeService {
                     const relatedTableForRelatedTable = relatedTablesForRelatedTable[0];
                     const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
 
-                    const rangeCheck = this.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable);
+                    const rangeCheck = this.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable, false);
                     whereConditionSql = rangeCheck.sql;
                     whereDescription = `${rangeCheck.description}`;
                 } else {
@@ -121,35 +123,39 @@ class ChallengeService {
                 challengeDescription += `with the amount of ${relatedTable.name}s${includeWhereCondition ? " where " + whereDescription : ""} they own`;
                 amountOfConditionsLeftToBeCreated--;
             } else if (challengeType === ChallengeType.MINIMUM_RELATED) {
-                const rangeCheck = this.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, whereConditionSql, whereDescription);
+                const rangeCheck = this.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, amountOfNonNestedRangeChecksCreated === 0, whereConditionSql, whereDescription);
+                amountOfNonNestedRangeChecksCreated++;
                 solutionQueryBuilder.addWhere(rangeCheck.sql);
                 challengeDescription += ` ${rangeCheck.description}`;
                 amountOfConditionsLeftToBeCreated--;
             }
         });
 
+        challengeDescription += ".";
+
         return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures)));
     }
 
-    private generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {
+    private generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {
         const evenOrMoreIsRequired = Faker.randomBoolean();
         const range = MathHelper.random(2, 6);
         const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
 
+        const whereJoinText = isFirstCheck ? "where" : "and";
         const sqlCheck = `EXISTS (select 1 FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN}${additionalWhereSql !== "" ? ` AND ${additionalWhereSql}` : ""} HAVING COUNT(*) ${rangeCheck})`;
-        const checkDescription = `${columnThatReferencesBaseTable.referencesColumn!.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
+        const checkDescription = `${whereJoinText} the ${baseTable.name} ${columnThatReferencesBaseTable.referencesColumn!.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
 
         return new RangeCheck(sqlCheck, checkDescription);
     }
 
     private getRandomColumnsSubsetOfTable(allColumns: TableColumn[]): TableSubset {
-        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined && !tableColumn.isPrimaryKey);
+        const possibleColumns = allColumns.filter((tableColumn) => tableColumn.referencesColumn === undefined);
         const columnsToSelectFromRelatedTable = possibleColumns
-            .slice(0, MathHelper.random(1, possibleColumns.length - 1));
+            .slice(0, MathHelper.random(2, possibleColumns.length - 1));
 
         const columnSelectionAsText = columnsToSelectFromRelatedTable.length === possibleColumns.length
-            ? "all"
-            : columnsToSelectFromRelatedTable.map((relatedColumn) => relatedColumn.name).join(", ");
+            ? "all fields"
+            : "the " + SentenceHelper.toList(columnsToSelectFromRelatedTable.map((relatedColumn) => relatedColumn.name));
 
         return new TableSubset(columnsToSelectFromRelatedTable, columnSelectionAsText);
     }

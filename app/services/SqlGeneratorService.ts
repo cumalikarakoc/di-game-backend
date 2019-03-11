@@ -8,9 +8,9 @@ class SqlGeneratorService {
 
     public generateTables(tableStructures: TableStructure[]): string {
         return this.sortToSatisfyDependencies(tableStructures, tableStructures).map((tableStructure) => {
-            return `CREATE TABLE ${tableStructure.name}(${tableStructure.columns
+            return `CREATE TABLE ${tableStructure.name}(\n${tableStructure.columns
                 .map((column) => {
-                    return `${column.name} ${this.getSqlDataType(column.dataType)}${this.buildConstraints(column)},`;
+                    return `${column.name} ${this.getSqlDataType(column.dataType)}${this.buildConstraints(column)},\n`;
                 }).join("")});`;
         }).join("\n");
     }

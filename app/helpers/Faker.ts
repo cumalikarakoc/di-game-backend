@@ -24,7 +24,7 @@ class Faker {
             relations: [
                 {
                     cardinality: EntityRelationCardinality.ONE,
-                    label: "the person owns",
+                    label: "owns",
                     name: "car_person",
                     targetEntityName: "person",
                 },
@@ -169,7 +169,7 @@ class Faker {
             relations: [
                 {
                     cardinality: EntityRelationCardinality.ONE,
-                    label: "that have",
+                    label: "has",
                     name: "car_door",
                     targetEntityName: "car",
                 },
@@ -194,7 +194,7 @@ class Faker {
             relations: [
                 {
                     cardinality: EntityRelationCardinality.ONE,
-                    label: "that have",
+                    label: "has",
                     name: "book_person",
                     targetEntityName: "person",
                 },
@@ -211,7 +211,7 @@ class Faker {
             relations: [
                 {
                     cardinality: EntityRelationCardinality.ONE,
-                    label: "that have",
+                    label: "has",
                     name: "car_wheel",
                     targetEntityName: "car",
                 },
