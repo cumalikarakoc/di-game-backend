@@ -22,7 +22,7 @@ app.use((req: any, res, next) => {
     }
     req.helpers.io = io;
 
-    const token = req.headers.Authorization || "".replace("Bearer ", "");
+    const token = (req.headers.authorization || "").toLowerCase().replace("bearer ", "");
 
     req.auth = {
         isAuthenticated: token !== "",

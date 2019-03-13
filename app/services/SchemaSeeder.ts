@@ -12,17 +12,28 @@ import TableStructure from "../models/TableStructure";
 class SchemaSeeder {
     public static getRandomDataForDataType(dataType: DataType) {
         switch (dataType) {
-            case DataType.WORD: return faker.lorem.word();
-            case DataType.SENTENCE: return faker.lorem.sentence();
-            case DataType.ADDRESS: return faker.address.streetAddress(true);
-            case DataType.FIRST_NAME: return faker.name.firstName();
-            case DataType.LAST_NAME: return faker.name.lastName();
-            case DataType.NUMBER: return faker.random.number({min: 1, max: 300});
-            case DataType.AGE: return faker.random.number({min: 1, max: 100});
-            case DataType.PRICE: return faker.random.number({min: 15, max: 45000});
-            case DataType.BOOLEAN: return faker.random.boolean();
-            case DataType.DATE: return faker.date;
-            default: return Faker.randomBoolean();
+            case DataType.WORD:
+                return faker.lorem.word();
+            case DataType.SENTENCE:
+                return faker.lorem.sentence();
+            case DataType.ADDRESS:
+                return faker.address.streetAddress(true);
+            case DataType.FIRST_NAME:
+                return faker.name.firstName();
+            case DataType.LAST_NAME:
+                return faker.name.lastName();
+            case DataType.NUMBER:
+                return faker.random.number({min: 1, max: 300});
+            case DataType.AGE:
+                return faker.random.number({min: 1, max: 100});
+            case DataType.PRICE:
+                return faker.random.number({min: 15, max: 45000});
+            case DataType.BOOLEAN:
+                return faker.random.boolean();
+            case DataType.DATE:
+                return faker.date.future();
+            default:
+                return Faker.randomBoolean();
         }
     }
 
@@ -64,7 +75,7 @@ class SchemaSeeder {
                     }
 
                     if (rowColumn.referencesColumn !== undefined) {
-                        const indexOfIdToReference = isCreatingForRelation
+                        const indexOfIdToReference = isCreatingForRelation || (primaryKeyValuesPerTableName[rowColumn.referencesColumn.tableName].length - 1) === idIndex
                             ? idIndex
                             : ++idIndex;
 

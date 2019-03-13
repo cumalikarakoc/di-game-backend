@@ -6,11 +6,11 @@ class Challenge {
   public initialSetupSql: string = "";
   public initialSchema: Schema;
 
-  constructor(description: string, initialSetupSql: string, solutionSql: string, intialSchema: Schema) {
+  constructor(description: string, initialSetupSql: string, solutionSql: string, initialSchema: Schema) {
     this.description = description;
     this.initialSetupSql = initialSetupSql;
     this.solutionSql = solutionSql;
-    this.initialSchema = intialSchema;
+    this.initialSchema = initialSchema;
   }
 }
 

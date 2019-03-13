@@ -1,8 +1,8 @@
-const sql = require('mssql')
-const connectionDSN = require('./../connection')
+import sql from "mssql";
+import connectionDSN from "../connection";
 
 const migrate = async () => {
-  await sql.connect(connectionDSN)
+  await sql.connect(connectionDSN);
 
   return await sql.query(`
     create table challenges
@@ -23,8 +23,8 @@ const migrate = async () => {
       constraint user_challenge_pk
         primary key nonclustered (user_id, challenge_id)
     );
-  `)
-}
+  `);
+};
 
-migrate().then(res => {
-})
+migrate().then((res) => {
+});

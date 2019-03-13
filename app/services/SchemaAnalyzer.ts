@@ -2,11 +2,11 @@ import Faker from "../helpers/Faker";
 import MathHelper from "../helpers/MathHelper";
 import SentenceHelper from "../helpers/SentenceHelper";
 import ColumnReference from "../models/ColumnReference";
+import ColumnSeedRequirement from "../models/ColumnSeedRequirement";
 import Entity from "../models/Entity";
 import EntityRelation from "../models/EntityRelation";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import RangeCheck from "../models/Query/RangeCheck";
-import SeedRequirement from "../models/SeedRequirement";
 import TableSeedRequirement from "../models/TableSeedRequirement";
 import TableColumn from "../models/TableColumn";
 import TableStructure from "../models/TableStructure";
@@ -14,7 +14,7 @@ import TableSubset from "../models/TableSubset";
 import SqlGeneratorService from "./SqlGeneratorService";
 
 class SchemaAnalyzer {
-    public generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = "", additionalWhereSeedRequirements: SeedRequirement[] = []): RangeCheck {
+    public generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = "", additionalWhereSeedRequirements: ColumnSeedRequirement[] = []): RangeCheck {
         const evenOrMoreIsRequired = Faker.randomBoolean();
         const range = MathHelper.random(2, 6);
         const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
