@@ -6,13 +6,15 @@ import Entity from "../models/Entity";
 import EntityRelation from "../models/EntityRelation";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import RangeCheck from "../models/Query/RangeCheck";
+import SeedRequirement from "../models/SeedRequirement";
+import TableSeedRequirement from "../models/TableSeedRequirement";
 import TableColumn from "../models/TableColumn";
 import TableStructure from "../models/TableStructure";
 import TableSubset from "../models/TableSubset";
 import SqlGeneratorService from "./SqlGeneratorService";
 
 class SchemaAnalyzer {
-    public generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = ""): RangeCheck {
+    public generateRangeCheck(baseTable: TableStructure, relatedTable: TableStructure, columnThatReferencesBaseTable: TableColumn, isFirstCheck: boolean, additionalWhereSql = "", additionalWhereDescription = "", additionalWhereSeedRequirements: SeedRequirement[] = []): RangeCheck {
         const evenOrMoreIsRequired = Faker.randomBoolean();
         const range = MathHelper.random(2, 6);
         const rangeCheck = evenOrMoreIsRequired ? `>= ${range}` : `<= ${range}`;
@@ -21,7 +23,7 @@ class SchemaAnalyzer {
         const sqlCheck = `EXISTS (select 1 FROM ${relatedTable.name} WHERE ${relatedTable.name}.${columnThatReferencesBaseTable.name}=${baseTable.name}.${SqlGeneratorService.IDENTITY_COLUMN}${additionalWhereSql !== "" ? ` AND ${additionalWhereSql}` : ""} HAVING COUNT(*) ${rangeCheck})`;
         const checkDescription = `${whereJoinText} the ${baseTable.name} ${columnThatReferencesBaseTable.referencesColumn!.sourceRelation.label} ${range} or ${evenOrMoreIsRequired ? "more" : "less"} ${relatedTable.name}s${additionalWhereSql !== "" ? ` ${additionalWhereDescription}` : ""}`;
 
-        return new RangeCheck(sqlCheck, checkDescription);
+        return new RangeCheck(sqlCheck, checkDescription, [new TableSeedRequirement(baseTable.name, relatedTable.name, range, additionalWhereSeedRequirements)]);
     }
 
     public getRandomColumnsSubsetOfTable(allColumns: TableColumn[]): TableSubset {

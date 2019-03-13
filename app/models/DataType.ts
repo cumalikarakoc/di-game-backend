@@ -1,6 +1,12 @@
 enum DataType {
-    TEXT,
+    WORD,
+    SENTENCE,
+    ADDRESS,
+    FIRST_NAME,
+    LAST_NAME,
     NUMBER,
+    AGE,
+    PRICE,
     BOOLEAN,
     DATE,
 }

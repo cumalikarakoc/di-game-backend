@@ -2,10 +2,13 @@ import ArrayHelper from "../helpers/ArrayHelper";
 import Faker from "../helpers/Faker";
 import MathHelper from "../helpers/MathHelper";
 import Challenge from "../models/Challenge";
+import ColumnSeedRequirement from "../models/ColumnSeedRequirement";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import ChallengeType from "../models/enums/ChallengeType";
 import Join from "../models/Query/Join";
 import JoinType from "../models/Query/JoinType";
+import SeedRequirement from "../models/SeedRequirement";
+import TableSeedRequirement from "../models/TableSeedRequirement";
 import QueryBuilder from "./QueryBuilder";
 import SchemaAnalyzer from "./SchemaAnalyzer";
 import SchemaSeeder from "./SchemaSeeder";
@@ -23,6 +26,7 @@ class ChallengeService {
     }
 
     public generateRandomChallenge(): Challenge {
+        let seedRequirements: TableSeedRequirement[] = [];
         const amountOfTablesForJoin = 2;
         const entities = [...Faker.ENTITIES.slice(0, amountOfTablesForJoin)];
 
@@ -77,6 +81,8 @@ class ChallengeService {
             let whereConditionSql = "";
             let whereDescription = "";
 
+            let whereSeedRequirements: SeedRequirement[] = [];
+
             if (includeWhereCondition) {
                 const shouldUseRelationOfRelatedTable = Faker.randomBoolean();
                 const relatedTablesForRelatedTable = ArrayHelper.shuffle(tableStructures.filter((possibleStructure) => possibleStructure.name !== baseTable.name && !possibleStructure.isPivotTable && possibleStructure.columns.some((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)));
@@ -86,6 +92,7 @@ class ChallengeService {
                     const columnThatReferenceRelatedTable = relatedTableForRelatedTable.columns.filter((column) => column.referencesColumn !== undefined && column.referencesColumn.tableName === relatedTable.name)[0];
 
                     const rangeCheck = this.schemaAnalyzer.generateRangeCheck(relatedTable, relatedTableForRelatedTable, columnThatReferenceRelatedTable, false);
+                    whereSeedRequirements = [...whereSeedRequirements, ...rangeCheck.seedRequirements];
                     whereConditionSql = rangeCheck.sql;
                     whereDescription = `${rangeCheck.description}`;
                 } else {
@@ -97,7 +104,10 @@ class ChallengeService {
                         return acc;
                     }, {});
 
-                    // TODO: FIX SEED REQUIREMENT
+                    whereSeedRequirements = [...whereSeedRequirements, ...columnsForWhereCondition.map((column) => {
+                        return new ColumnSeedRequirement(relatedTable.name, column.name, valuesForColumnByColumnName[column.name]);
+                    })];
+
                     whereConditionSql = `${columnsForWhereCondition.map((column) => {
                         return `${column.name}=${valuesForColumnByColumnName[column.name]}`;
                     }).join(" AND ")}`;
@@ -115,7 +125,8 @@ class ChallengeService {
                 challengeDescription += `with the amount of ${relatedTable.name}s${includeWhereCondition ? " where " + whereDescription : ""} they own`;
                 amountOfConditionsLeftToBeCreated--;
             } else if (challengeType === ChallengeType.MINIMUM_RELATED) {
-                const rangeCheck = this.schemaAnalyzer.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, amountOfNonNestedRangeChecksCreated === 0, whereConditionSql, whereDescription);
+                const rangeCheck = this.schemaAnalyzer.generateRangeCheck(baseTable, relatedTable, columnThatReferencesBaseTable, amountOfNonNestedRangeChecksCreated === 0, whereConditionSql, whereDescription, whereSeedRequirements);
+                seedRequirements = [...seedRequirements, ...rangeCheck.seedRequirements];
                 amountOfNonNestedRangeChecksCreated++;
                 solutionQueryBuilder.addWhere(rangeCheck.sql);
                 challengeDescription += ` ${rangeCheck.description}`;
@@ -125,13 +136,13 @@ class ChallengeService {
 
         challengeDescription += ".";
 
-        return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures)));
+        return new Challenge(challengeDescription, initialSetupSql, solutionQueryBuilder.build(), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures), seedRequirements));
     }
 
     private getRandomChallengeType() {
         const randomNumber = MathHelper.random(1, 10);
 
-        if (randomNumber < 11) {
+        if (randomNumber < 5) {
             return ChallengeType.MINIMUM_RELATED;
         }
 

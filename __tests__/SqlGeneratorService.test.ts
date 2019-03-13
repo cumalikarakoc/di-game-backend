@@ -11,8 +11,8 @@ test("should generate DDL for 2 tables", () => {
     const service = new SqlGeneratorService();
 
     const tableStructures = [
-        new TableStructure("a", [new TableColumn("a", DataType.TEXT), new TableColumn("b", DataType.TEXT)]),
-        new TableStructure("b", [new TableColumn("a", DataType.TEXT), new TableColumn("b", DataType.TEXT)]),
+        new TableStructure("a", [new TableColumn("a", DataType.WORD), new TableColumn("b", DataType.WORD)]),
+        new TableStructure("b", [new TableColumn("a", DataType.WORD), new TableColumn("b", DataType.WORD)]),
     ];
     // Act
     const actual = service.generateTables(tableStructures);
@@ -36,12 +36,12 @@ test("should generate DDL for 2 tables with relation", () => {
 
     const tableStructures = [
         new TableStructure("a", [
-            new TableColumn("a", DataType.TEXT, true),
-            new TableColumn("b", DataType.TEXT),
+            new TableColumn("a", DataType.WORD, true),
+            new TableColumn("b", DataType.WORD),
         ]),
         new TableStructure("b", [
-            new TableColumn("a", DataType.TEXT, true, new ColumnReference("a", "a", new EntityRelation("a", "b", EntityRelationCardinality.MANY, "a_b"))),
-            new TableColumn("b", DataType.TEXT),
+            new TableColumn("a", DataType.WORD, true, new ColumnReference("a", "a", new EntityRelation("a", "b", EntityRelationCardinality.MANY, "a_b"))),
+            new TableColumn("b", DataType.WORD),
         ]),
     ];
     // Act

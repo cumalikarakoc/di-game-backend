@@ -9,7 +9,7 @@ class Faker {
             attributes: [
                 {
                     name: "brand",
-                    type: DataType.TEXT,
+                    type: DataType.WORD,
                 },
                 {
                     name: "has_hook",
@@ -18,6 +18,10 @@ class Faker {
                 {
                     name: "age",
                     type: DataType.NUMBER,
+                },
+                {
+                    name: "price",
+                    type: DataType.PRICE,
                 },
             ],
             name: "car",
@@ -75,7 +79,7 @@ class Faker {
                 },
                 {
                     name: "street",
-                    type: DataType.TEXT,
+                    type: DataType.ADDRESS,
                 },
             ],
             name: "school",
@@ -98,11 +102,11 @@ class Faker {
             attributes: [
                 {
                     name: "first_name",
-                    type: DataType.TEXT,
+                    type: DataType.FIRST_NAME,
                 },
                 {
                     name: "last_name",
-                    type: DataType.TEXT,
+                    type: DataType.LAST_NAME,
                 },
                 {
                     name: "age",
@@ -123,7 +127,7 @@ class Faker {
             attributes: [
                 {
                     name: "name",
-                    type: DataType.TEXT,
+                    type: DataType.WORD,
                 },
                 {
                     name: "age",
@@ -162,7 +166,7 @@ class Faker {
             attributes: [
                 {
                     name: "position",
-                    type: DataType.TEXT,
+                    type: DataType.WORD,
                 },
             ],
             name: "door",
@@ -179,7 +183,7 @@ class Faker {
             attributes: [
                 {
                     name: "title",
-                    type: DataType.TEXT,
+                    type: DataType.SENTENCE,
                 },
                 {
                     name: "is_best_seller",

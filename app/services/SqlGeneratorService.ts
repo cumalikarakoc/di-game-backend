@@ -36,7 +36,7 @@ class SqlGeneratorService {
     }
 
     private getSqlDataType(dataType: DataType): string {
-        if (dataType === DataType.TEXT) {
+        if (dataType === DataType.WORD) {
             return "VARCHAR(50)";
         }
 
