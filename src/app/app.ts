@@ -44,8 +44,12 @@ const statePerPlayerId: any = {};
 io.on("connection", (socket) => {
     socket.on("query update", (state) => {
         statePerPlayerId[state.playerId] = state.query;
-        io.emit("progress update", Object.keys(statePerPlayerId).map(playerKey => {
-            return {playerId: playerKey, query: statePerPlayerId[playerKey]};
+        io.emit("progress update", Object.keys(statePerPlayerId).map((playerKey) => {
+            return {
+                avatarUrl: `https://di-game-api.maartendev.me/avatars/${playerKey}.jpeg`,
+                playerId: playerKey,
+                query: statePerPlayerId[playerKey].substr(0, 100000),
+            };
         }));
     });
 });

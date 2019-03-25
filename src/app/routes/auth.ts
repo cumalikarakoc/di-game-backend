@@ -52,8 +52,10 @@ router.post("/login", (req: any, res) => {
     });
 });
 
-router.post("/flush-auth", (req: any, res) => {
+router.get("/flush", (req: any, res) => {
     authenticatedPlayers = [];
+
+    res.send({success: true});
 });
 
 export default router;
