@@ -2,21 +2,23 @@ import * as express from "express";
 
 const router = express.Router();
 import sqlPool from "../database/connection";
+import QueryBuilder from "../models/DSL/Parsers/QueryBuilder";
+import QueryDescriptionBuilder from "../models/DSL/Parsers/QueryDescriptionBuilder";
 import ChallengeService from "../services/ChallengeService";
 import SchemaAnalyzer from "../services/SchemaAnalyzer";
 import SchemaSeeder from "../services/SchemaSeeder";
 import SqlGeneratorService from "../services/SqlGeneratorService";
 
-const challengeService = new ChallengeService(new SqlGeneratorService(), new SchemaSeeder(), new SchemaAnalyzer());
+const challengeService = new ChallengeService(new SqlGeneratorService(), new QueryBuilder(), new QueryDescriptionBuilder(), new SchemaSeeder(), new SchemaAnalyzer());
 
 let hasConnected = false;
 
 router.get("/next", async (req: any, res) => {
-    if (!req.auth.isAuthenticated) {
-        return res.json({success: false, error: "Unauthorized"});
-    }
+    // if (!req.auth.isAuthenticated) {
+    //     return res.json({success: false, error: "Unauthorized"});
+    // }
 
-    const userId = req.auth.token;
+    const userId = req.auth.token || "aaa-bbb";
 
     const challenge = challengeService.generateRandomChallenge();
 
