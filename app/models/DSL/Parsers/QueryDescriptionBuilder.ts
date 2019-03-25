@@ -19,24 +19,26 @@ class QueryDescriptionBuilder {
 
         const where = this.getWhereStatementsAsDescription(statement.whereStatementExpressions);
 
-        return `select ${select}${where.length > 0 ? " " + where : ""}.`;
+        return `select ${select}${where.length > 0 ? where : ""}.`;
     }
 
     private getWhereStatementsAsDescription(whereExpressions: WhereExpression[]): string {
         return whereExpressions.reduce((acc: string, expression, index) => {
             if (expression instanceof WhereRelatedExistsExpression) {
-                const prefix = acc.length > 0 ? ` ${acc}` : acc;
+                const prefix = index === 0 ? " " : "";
 
-                const nestedWhere = expression.nestedWhere.length > 0 ? this.getWhereStatementsAsDescription(expression.nestedWhere) : "";
-                return `${prefix}where the ${expression.relatedEntity} has ${expression.count}${this.getCompareOperatorDescription(expression.compareOperator)} ${expression.table}s${nestedWhere}`;
+                const nestedWhere = expression.nestedWhere.length > 0 ? " " + this.getWhereStatementsAsDescription(expression.nestedWhere) : "";
+                return `${acc}${prefix}where the ${expression.relatedEntity} has ${expression.count}${this.getCompareOperatorDescription(expression.compareOperator)} ${expression.table}s${nestedWhere}`;
             } else if (expression instanceof WhereColumnValuesExpression) {
-                const whereColumns = expression.whereColumnCollections.map((collection) => {
-                    return "where the " + collection.table + " has a " + collection.columns.map((column) => {
+                const whereColumns = expression.whereColumnCollections.map((collection, index) => {
+                    const prefix = index === 0 ? " " : "";
+
+                    return `${prefix}where the ${collection.table} has a ` + collection.columns.map((column) => {
                         return column.column + " of " + column.value;
                     }).join(" and ");
                 }).join(" and ");
 
-                return `${acc} ${whereColumns}`;
+                return `${acc}${whereColumns}`;
             }
 
             return acc;

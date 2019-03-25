@@ -24,12 +24,13 @@ class QueryBuilder {
     }
 
     private getWhereStatementsAsStatement(whereExpressions: WhereExpression[]): string {
-        return whereExpressions.reduce((acc: string, expression) => {
+        return whereExpressions.reduce((acc: string, expression, index) => {
             if (expression instanceof WhereRelatedExistsExpression) {
                 const nestedWhere = expression.nestedWhere.length > 0 ? " and" + this.getWhereStatementsAsStatement(expression.nestedWhere) : "";
-                const prefix = acc.length > 0 ? acc + " AND " : acc;
+                const space = index === 0 ? " " : "";
+                const prefix = acc.length > 0 ? acc + " AND" : acc;
 
-                return `${prefix}EXISTS(SELECT 1 FROM ${expression.table} WHERE ${expression.table}.${expression.ownIdColumn}=${expression.relatedEntity}.${expression.parentIdColumn}${nestedWhere} HAVING COUNT(*) ${this.getCompareOperator(expression.compareOperator)} ${expression.count})`;
+                return `${prefix}${space}EXISTS(SELECT 1 FROM ${expression.table} WHERE ${expression.table}.${expression.ownIdColumn}=${expression.relatedEntity}.${expression.parentIdColumn}${nestedWhere} HAVING COUNT(*) ${this.getCompareOperator(expression.compareOperator)} ${expression.count})`;
             } else if (expression instanceof WhereColumnValuesExpression) {
                 const whereColumns = expression.whereColumnCollections.map((collection) => {
                     return collection.columns.map((column) => {
