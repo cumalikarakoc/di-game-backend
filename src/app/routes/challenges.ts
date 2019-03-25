@@ -1,12 +1,11 @@
 import * as express from "express";
 import Schema from "../models/Schema";
 import Table from "../models/Table";
-import {rows} from "mssql";
 
 const router = express.Router();
 
 let challengeIndex = 0;
-const stuk = new Table("Stuk", ["stuknr, titel, componistId, stukOrigineel, genrenaam, niveaucode"], [
+const stuk = new Table("Stuk", ["stuknr", "titel", "componistId", "stukOrigineel", "genrenaam", "niveaucode"], [
     {stuknr: 1, titel: "Blue bird", componistId: 1, stukOrigineel: null, genrenaam: "jazz", niveaucode: null},
     {stuknr: 2, titel: "Blue bird", componistId: 2, stukOrigineel: 1, genrenaam: "jazz", niveaucode: "B"},
     {stuknr: 3, titel: "Air pur charmer", componistId: 4, stukOrigineel: null, genrenaam: "klassiek", niveaucode: "B"},
@@ -34,24 +33,14 @@ const muziekschool = new Table("Muziekschool", ["schoolId", "naam"], [
     {schoolId: 3, naam: "Het Muziekpakhuis"}]);
 
 const orders = new Table("orders", ["ordernr", "customerId", "orderdate", "orderstatus"], [
-    {ordernr:1, customerid: 1, orderdate: "2019-02-17", orderstatus:"Registrated"},
-    {ordernr:2, customerid: 1, orderdate: "2019-02-18", orderstatus:"Ready"},
-    {ordernr:3, customerid: 2, orderdate: "2019-03-18", orderstatus:"Ready"}
+    {ordernr: 1, customerid: 1, orderdate: "2019-02-17", orderstatus: "Registrated"},
+    {ordernr: 2, customerid: 1, orderdate: "2019-02-18", orderstatus: "Ready"},
+    {ordernr: 3, customerid: 2, orderdate: "2019-03-18", orderstatus: "Ready"}
 ]);
 
 const customers = new Table("customers", ["customerId", "customername"], [
-    {customerId:1, customername:"Nabben"},
-    {customerId:2, customername:"Ethan"}
-]);
-
-const order_detail = new Table("order_detail", ["ordernr", "productcode", "detailquantity"],[
-    { ordernr: 1, productcode: 12, detailquantity: 2},
-    { ordernr: 2, productcode: 12, detailquantity: 3},
-]);
-
-const products = new Table("products", ["productcode", "productname", "productprice", "productsinstock"],[
-    {productcode: 12, productname: "Mackbook Pro", productprice: 2000.00, productinstock: 12
-    }
+    {customerId: 1, customername: "Nabben"},
+    {customerId: 2, customername: "Ethan"}
 ]);
 
 const challenges = [
@@ -78,7 +67,7 @@ const challenges = [
     {
         description: "Schrijf een stored procedure die gegeven een CustomerName en een OrderStatus het aantal orders teruggeeft dat die customer heeft met die OrderStatus.",
         schema: new Schema([orders, customers])
-    }
+    },
 ];
 
 router.get("/next", async (req: any, res) => {
