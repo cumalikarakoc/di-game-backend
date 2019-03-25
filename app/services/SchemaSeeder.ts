@@ -56,7 +56,7 @@ class SchemaSeeder {
             let idIndex = 0;
             let amountOfRecordsCreatedWithSameRelation = 0;
 
-            return new Table(table.name, table.columns.map((column) => column.name), Array(amountOfRecordsToCreate).fill(1).map(() => {
+            return new Table(table.name, table.columns.map((column) => column.name), [].map(() => {
                 return table.columns.reduce((acc: any, rowColumn: TableColumn) => {
                     const columnRequirements = hasSeedRequirementsForCurrentTable ? (seedRequirements[0] as TableSeedRequirement).relatedRequirements : [];
                     const requirementForCurrentColumn = columnRequirements.filter((columnRequirement) => columnRequirement.column === rowColumn.name);

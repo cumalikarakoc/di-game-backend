@@ -15,6 +15,7 @@ import WhereExpression from "../models/DSL/WhereExpression";
 import WhereRelatedExistsExpression from "../models/DSL/WhereRelatedExistsExpression";
 import EntityRelationCardinality from "../models/EntityRelationCardinality";
 import ChallengeType from "../models/enums/ChallengeType";
+import Schema from "../models/Schema";
 import TableStructure from "../models/TableStructure";
 import SchemaAnalyzer from "./SchemaAnalyzer";
 import SchemaSeeder from "./SchemaSeeder";
@@ -72,7 +73,8 @@ class ChallengeService {
             }
         });
 
-        return new Challenge(this.queryDescriptionBuilder.build(solutionQueryStatement), initialSetupSql, this.queryBuilder.build(solutionQueryStatement), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures), []));
+        return new Challenge("test", "test", new Schema([]));
+        // return new Challenge(this.queryDescriptionBuilder.build(solutionQueryStatement), initialSetupSql, this.queryBuilder.build(solutionQueryStatement), this.schemaSeeder.fillTables(this.sqlGenerator.sortToSatisfyDependencies(tableStructures, tableStructures), []));
     }
 
     private createRandomWhere(tableStructures: TableStructure[], baseTable: TableStructure, relatedTable: TableStructure, forceColumnWhere: boolean = false): WhereExpression | null {

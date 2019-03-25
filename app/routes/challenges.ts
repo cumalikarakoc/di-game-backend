@@ -1,41 +1,39 @@
 import * as express from "express";
+import Schema from "../models/Schema";
+import Table from "../models/Table";
 
 const router = express.Router();
-import sqlPool from "../database/connection";
-import QueryBuilder from "../models/DSL/Parsers/QueryBuilder";
-import QueryDescriptionBuilder from "../models/DSL/Parsers/QueryDescriptionBuilder";
-import ChallengeService from "../services/ChallengeService";
-import SchemaAnalyzer from "../services/SchemaAnalyzer";
-import SchemaSeeder from "../services/SchemaSeeder";
-import SqlGeneratorService from "../services/SqlGeneratorService";
 
-const challengeService = new ChallengeService(new SqlGeneratorService(), new QueryBuilder(), new QueryDescriptionBuilder(), new SchemaSeeder(), new SchemaAnalyzer());
+let challengeIndex = 0;
 
-let hasConnected = false;
+const challenges = [
+    {
+        description: "Select brand from from car",
+        schema: new Schema([new Table("car", ["brand"], [
+            {brand: "BMW", max_speed: 138, color: "red"},
+            {brand: "Opel", max_speed: 45, color: "blue"},
+            {brand: "BMW", max_speed: 138, color: "red"},
+        ])]),
+    },
+    {
+        description: "Select age from person",
+        schema: new Schema([new Table("person", ["age", "gender"], [
+            {age: 33, gender: "F"},
+            {age: 77, gender: "M"},
+        ])]),
+    },
+];
 
 router.get("/next", async (req: any, res) => {
-    // if (!req.auth.isAuthenticated) {
-    //     return res.json({success: false, error: "Unauthorized"});
-    // }
+    req.helpers.io.emit("next challenge", challenges[challengeIndex]);
 
-    const userId = req.auth.token || "aaa-bbb";
+    challengeIndex++;
 
-    const challenge = challengeService.generateRandomChallenge();
-
-    const test = "opef";
-    if (!hasConnected) {
-        await sqlPool.connect();
-        hasConnected = true;
+    if (challengeIndex === challenges.length) {
+        challengeIndex = 0;
     }
-    await sqlPool.query`DELETE FROM challenges WHERE user_id=${userId}`;
-    await sqlPool.query`INSERT INTO challenges (description, setup_sql, solution_sql, seed_data_sql, user_id) VALUES (${challenge.description}, ${challenge.initialSetupSql}, ${challenge.solutionSql}, ${test}, ${userId})`;
 
-    res.send(challenge);
-});
-
-router.get("/verify", (req, res) => {
-    const {challengeId} = req.body;
-
+    return res.send({success: true});
 });
 
 export default router;

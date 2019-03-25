@@ -21,7 +21,7 @@ router.post("/login", (req: any, res) => {
 
   const localUserPath = `avatars/${playerId}.jpeg`;
 
-  if (!fs.existsSync(path.join(__dirname, "../public/" + localUserPath))) {
+  if (!fs.existsSync(path.join(__dirname, "../../public/" + localUserPath))) {
     return res.send({
       success: false,
       validation: {
