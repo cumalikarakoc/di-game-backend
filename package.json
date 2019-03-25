@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc",
-    "lint": "tslint -c tslint.json 'app/**/*.ts'",
-    "dev": "ts-node-dev --respawn --transpileOnly ./app/app.ts",
+    "lint": "tslint -c tslint.json './src/app/**/*.ts'",
+    "dev": "ts-node-dev --respawn --transpileOnly ./src/app/app.ts",
     "start": "node ./dist/app/app.js",
     "test": "jest"
   },
