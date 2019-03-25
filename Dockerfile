@@ -11,5 +11,6 @@ RUN npm install -g typescript
 RUN sh -c tsc
 
 EXPOSE 8080
+EXPOSE 3001
 
 CMD [ "npm", "start" ]
