@@ -4,6 +4,7 @@ const router = express.Router();
 import fs from "fs";
 import path from "path";
 import uuid4 from "uuid/v4";
+import {APP_URL} from "../config";
 
 let authenticatedPlayers: any[] = [];
 
@@ -56,6 +57,12 @@ router.get("/flush", (req: any, res) => {
     authenticatedPlayers = [];
 
     res.send({success: true});
+});
+
+router.get("/debug", (req: any, res) => {
+    authenticatedPlayers = [];
+
+    res.send({url: APP_URL});
 });
 
 export default router;

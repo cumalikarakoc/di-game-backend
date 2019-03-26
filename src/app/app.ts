@@ -3,6 +3,7 @@ import express from "express";
 import {createServer} from "http";
 import * as path from "path";
 import socketServer, {Server} from "socket.io";
+import {APP_PORT} from "./config";
 import TransportListener from "./domain/EventListeners/TransportListener";
 import authorizationMiddleware from "./domain/middleware/authorizationMiddleware";
 import crossOriginMiddleware from "./domain/middleware/crossOriginMiddleware";
@@ -27,6 +28,6 @@ app.use("/auth", authRoutes);
 app.use("/game", gameRoutes);
 app.use("/challenges", challengesRoutes);
 
-server.listen(3001);
+server.listen(APP_PORT);
 
 export default app;

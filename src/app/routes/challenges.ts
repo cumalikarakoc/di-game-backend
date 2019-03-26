@@ -66,7 +66,7 @@ const challenges = [
         schema: new Schema([orders, customers]),
     },
     {
-        description: " Geef alle originele stukken waar geen bewerkingen van zijn.. Gebruik EXISTS.",
+        description: "Geef alle originele stukken waar geen bewerkingen van zijn.. Gebruik EXISTS.",
         schema: new Schema([stuk]),
     },
     {

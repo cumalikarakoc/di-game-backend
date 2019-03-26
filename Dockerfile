@@ -7,9 +7,11 @@ COPY package*.json ./
 COPY . .
 
 RUN npm install
-RUN npm install -g typescript
-RUN sh -c tsc
+RUN npm run tsc
 
-EXPOSE 3001
+ENV APP_PORT 3001
+ENV APP_URL "http://localhost:${APP_PORT}"
+
+EXPOSE $APP_PORT
 
 CMD [ "npm", "start" ]
