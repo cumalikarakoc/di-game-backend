@@ -5,6 +5,7 @@ import Table from "../models/Table";
 const router = express.Router();
 
 let challengeIndex = 0;
+
 const stuk = new Table("Stuk", ["stuknr", "titel", "componistId", "stukOrigineel", "genrenaam", "niveaucode"], [
     {stuknr: 1, titel: "Blue bird", componistId: 1, stukOrigineel: null, genrenaam: "jazz", niveaucode: null},
     {stuknr: 2, titel: "Blue bird", componistId: 2, stukOrigineel: 1, genrenaam: "jazz", niveaucode: "B"},
@@ -35,18 +36,18 @@ const muziekschool = new Table("Muziekschool", ["schoolId", "naam"], [
 const orders = new Table("orders", ["ordernr", "customerId", "orderdate", "orderstatus"], [
     {ordernr: 1, customerid: 1, orderdate: "2019-02-17", orderstatus: "Registrated"},
     {ordernr: 2, customerid: 1, orderdate: "2019-02-18", orderstatus: "Ready"},
-    {ordernr: 3, customerid: 2, orderdate: "2019-03-18", orderstatus: "Ready"}
+    {ordernr: 3, customerid: 2, orderdate: "2019-03-18", orderstatus: "Ready"},
 ]);
 
 const customers = new Table("customers", ["customerId", "customername"], [
     {customerId: 1, customername: "Nabben"},
-    {customerId: 2, customername: "Ethan"}
+    {customerId: 2, customername: "Ethan"},
 ]);
 
 const challenges = [
     {
         description: "Welke stukken zijn gecomponeerd door een muziekschooldocent? Geef van de betreffende stukken het stuknr, de titel, de naam van de componist en de naam van de muziekschool.",
-        schema: new Schema([stuk, componist, muziekschool])
+        schema: new Schema([stuk, componist, muziekschool]),
     },
     {
         description: "Geef het nummer en de naam van de muziekscholen waarvoor meer dan drie speelstukken bestaan die gecomponeerd zijn door docenten van de betreffende school.",
@@ -55,6 +56,14 @@ const challenges = [
     {
         description: " Geef componistId en naam van iedere componist die meer dan 1 stuk heeft gecomponeerd. Gebruik EXISTS.",
         schema: new Schema([stuk, componist]),
+    },
+    {
+        description: "Schrijf een trigger die voorkomt dat er een order toegevoegd kan worden als er al 3 orders met orderstatus ready zijn.",
+        schema: new Schema([orders, customers]),
+    },
+    {
+        description: "Schrijf een constraint voor de order tabel die ervoor zorgt dat een orderstatus alleen Registrated of Ready is.",
+        schema: new Schema([orders, customers]),
     },
     {
         description: " Geef alle originele stukken waar geen bewerkingen van zijn.. Gebruik EXISTS.",
@@ -66,8 +75,8 @@ const challenges = [
     },
     {
         description: "Schrijf een stored procedure die gegeven een CustomerName en een OrderStatus het aantal orders teruggeeft dat die customer heeft met die OrderStatus.",
-        schema: new Schema([orders, customers])
-    },
+        schema: new Schema([orders, customers]),
+    }
 ];
 
 router.get("/next", async (req: any, res) => {
@@ -80,6 +89,10 @@ router.get("/next", async (req: any, res) => {
     }
 
     return res.send({success: true});
+});
+
+router.get("/current", async (req: any, res) => {
+    return res.send({challenge: challenges[challengeIndex]});
 });
 
 export default router;
